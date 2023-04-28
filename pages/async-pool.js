@@ -6,20 +6,23 @@
  * @param {*} iteratorFn 回调函数
  */
 async function asyncPool(poolLimit, array, iteratorFn) {
-   let totalList = [];
-   let executing = []; 
-   for(let item of array){
-       let p = Promise.resolve().then(()=> iteratorFn(item))
-       totalList.push(p)
-       // 删除执行完毕的 promise
-       let e = p.then(()=> executing.splice(executing.indexOf(e),1))
-       executing.push(e)
-       // 并发数超过限制
-       if(executing.length >= poolLimit){
-          await Promise.race(executing)
-       }
-   }
-   return Promise.all(totalList)
-}
+    let totalList = [];
+    let executing = []; 
+    for(let i =0; i< array.length; i++){
+        item = array[i]
+        let p = Promise.resolve().then(()=> iteratorFn(item))
+        totalList.push(p)
+        // 删除执行完毕的 promise
+        let e = p.then(()=> {
+            executing.splice(executing.findIndex(ele => ele.index === i),1)
+        })
+        executing.push({p:e, index: i})
+        // 并发数超过限制
+        if(executing.length >= poolLimit){
+           await Promise.race(executing.map(it => it.p))
+        }
+    }
+    return Promise.all(totalList)
+ }
 
 module.exports.asyncPool = asyncPool;
